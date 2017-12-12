@@ -37,7 +37,7 @@ if (!$steam->loggedIn()) {
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     </head>
     <body>
-        <div id="map">7 Days to Die Map: Chrani-Gameserver</div>
+        <div id="map">7 Days to Die Map: Chrani-Gameserver (c) 2017</div>
         <!-- Modal EMPTY-->
         <div class="modal left fade" id="playermodal" role="dialog" tabindex="-1">
             <div class="modal-dialog" role="document">
