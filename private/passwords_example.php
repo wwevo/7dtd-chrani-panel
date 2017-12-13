@@ -30,7 +30,7 @@ if (!defined('STEAMAUTH-DOMAINNAME')) {
 
 // Chrani-API
 if (!defined('CHRANI-APIKEY')) {
-    define('CHRANI-APIKEY', $opts);
+    define('CHRANI-APIKEY', '');
 }
 $opts = ["http" => [
         "method" => "GET",

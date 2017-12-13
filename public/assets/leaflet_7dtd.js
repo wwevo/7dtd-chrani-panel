@@ -1,41 +1,77 @@
+
 // <editor-fold defaultstate="collapsed" desc=" Base Markers ">
 var basesMappingList = {};
+var basesMappingListOld = {};
+var secondBasesMappingList = {};
+var secondBasesMappingListOld = {};
 var active_bases = L.layerGroup();
+
+function createBaseMarker(bounds, protected, name) {
+    var marker;
+    if (protected === '1') {
+        var color = 'green';
+    } else {
+        var color = 'red';
+    }
+    marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
+    marker.bindTooltip(name + " (1st base)", {permanent: false, direction: "center"});
+    return marker;
+}
 
 var setBaseMarkers = function (data) {
     active_bases.clearLayers();
+    basesMappingListOld = jQuery.extend({}, basesMappingList);
+    secondBasesMappingListOld = jQuery.extend({}, secondBasesMappingList);
     basesMappingList = {};
+    secondBasesMappingList = {};
     var bases = 0;
+    var bounds;
+    var marker;
+
     $.each(data, function (key, val) {
-        var marker;
         if (val.homeX !== '0' && val.homeZ !== '0') {
-            if (val.protect === '1') {
-                var color = 'green';
-            } else {
-                var color = 'red';
-            }
-            var bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
-            marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
-            marker.bindTooltip(val.name + " (1st base)", {permanent: false, direction: "center"});
-            active_bases.addLayer(marker);
-            basesMappingList[bases] = marker;
+            bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
+            marker = createBaseMarker(bounds, val.protect, val.name);
+            basesMappingList[val.steam] = { marker: marker, val: val};
             bases++;
         }
         if (val.home2X !== '0' && val.home2Z !== '0') {
-            var color = 'green';
-            if (val.protect2 === '1') {
-                var color = 'green';
-            } else {
-                var color = 'red';
-            }
-            var bounds2 = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
-            marker = L.rectangle(bounds2, {color: color, weight: 1, fillOpacity: 0.1});
-            marker.bindTooltip(val.name + " (2nd base)", {permanent: false, direction: "center"});
-            active_bases.addLayer(marker);
-            basesMappingList[bases] = marker;
+            bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
+            marker = createBaseMarker(bounds, val.protect, val.name);
+            secondBasesMappingList[val.steam] = { marker: marker, val: val};
             bases++;
         }
     });
+    // remove all markers no longer present
+    $.each(basesMappingListOld, function (key, val) {
+        if (!basesMappingList.hasOwnProperty(key)) {
+            active_bases.removeLayer(val.marker);
+        }
+    });
+    // add new markers to the map
+    $.each(basesMappingList, function (key, val) {
+        if (!basesMappingListOld.hasOwnProperty(key)) {
+            active_bases.addLayer(val.marker);
+        } else {
+            active_bases.addLayer(val.marker);
+        }
+    });
+    
+    $.each(secondBasesMappingListOld, function (key, val) {
+        if (!secondBasesMappingList.hasOwnProperty(key)) {
+            active_bases.removeLayer(val.marker);
+        }
+    });
+    // add new markers to the map
+    $.each(secondBasesMappingList, function (key, val) {
+        if (!secondBasesMappingListOld.hasOwnProperty(key)) {
+            active_bases.addLayer(val.marker);            
+        } else {
+            active_bases.addLayer(val.marker);
+        }
+        // need to add a check for changed markers and update them
+    });
+    
     $("#mapControlBasesCount").text(bases);
     return true;
 };
@@ -49,7 +85,7 @@ var pollBases = function () {
                     setBaseMarkers(data); // poll complete, set the markers!!
                 });
     }
-    updateBasesTimeout = window.setTimeout(pollBases, 30000); // if active or not, poll this function periodically
+    updateBasesTimeout = window.setTimeout(pollBases, 5000); // if active or not, poll this function periodically
     return active_bases; // return current layer, this is just for convenience
 };
 // </editor-fold>
