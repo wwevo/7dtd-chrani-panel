@@ -36,3 +36,11 @@ function has_permission($command) {
         return false;
     }
 }
+
+function has_permission_level($level) {
+    global $config;
+    if ($config['7dtdPerm']['permission_level'] <= $level) {
+        return $config['7dtdPerm']['permission_level'];
+    }
+    return false;
+}

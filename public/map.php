@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/../config_steam-auth.php';
 require_once __DIR__ . '/../config_7dtd-permissions.php';
 
@@ -10,7 +9,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 set_time_limit(5);
 
-if (!$steam->loggedIn()) {
+if (!$steam->loggedIn() && has_permision_level(4)) { // 4 is a rank for a few special players like testers
     $header = 'Location: ' . $config['SteamAuth']['domainname'];
     header($header);
     exit;
