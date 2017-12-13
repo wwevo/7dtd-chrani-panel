@@ -7,6 +7,6 @@ if (!$steam->loggedIn()) {
 	header($header);
 	exit;
 }
-$context = stream_context_create(constant('CHRANI-APIKEY'));
+$context = stream_context_create(constant('CHRANI-APIKEY-OPTS'));
 $file = file_get_contents('http://chrani.net:25004/api/getlandclaims?adminuser=' . constant("SDTD-ADMINUSER") . '&admintoken=' . constant("SDTD-ADMINTOKEN"), false, $context);
 echo $file;
