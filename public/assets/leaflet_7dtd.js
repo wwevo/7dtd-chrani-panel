@@ -1,77 +1,101 @@
-
+function deepEqual(x, y) {
+    const ok = Object.keys, tx = typeof x, ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (
+            ok(x).length === ok(y).length &&
+            ok(x).every(key => deepEqual(x[key], y[key]))
+            ) : (x === y);
+}
 // <editor-fold defaultstate="collapsed" desc=" Base Markers ">
 var basesMappingList = {};
 var basesMappingListOld = {};
-var secondBasesMappingList = {};
-var secondBasesMappingListOld = {};
 var active_bases = L.layerGroup();
 
-function createBaseMarker(bounds, protected, name) {
+function createBaseMarker(val, order) {
     var marker;
-    if (protected === '1') {
-        var color = 'green';
+    if (order === '1st') {
+        bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
+        steamid = val.steam + 'a';
+        protect = val.protect;
+        if (val.protect === '1') {
+            var color = 'green';
+        } else {
+            var color = 'red';
+        }
     } else {
-        var color = 'red';
+        bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
+        steamid = val.steam + 'b';
+        protect = val.protect2;
+        if (val.protect2 === '1') {
+            var color = 'green';
+        } else {
+            var color = 'red';
+        }
     }
     marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
-    marker.bindTooltip(name + " (1st base)", {permanent: false, direction: "center"});
+    marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
+    marker.steamid = steamid;
+    marker.protect = protect;
     return marker;
 }
-
+// this shit is more of a mockup and not at all optimized or even thought through :)
+// Let's get it to work first
 var setBaseMarkers = function (data) {
-    active_bases.clearLayers();
     basesMappingListOld = jQuery.extend({}, basesMappingList);
-    secondBasesMappingListOld = jQuery.extend({}, secondBasesMappingList);
     basesMappingList = {};
-    secondBasesMappingList = {};
-    var bases = 0;
-    var bounds;
     var marker;
+    var bases = 0;
 
     $.each(data, function (key, val) {
-        if (val.homeX !== '0' && val.homeZ !== '0') {
-            bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
-            marker = createBaseMarker(bounds, val.protect, val.name);
-            basesMappingList[val.steam] = { marker: marker, val: val};
+        if (val.homeX !== '0' || val.homeZ !== '0') {
+            marker = createBaseMarker(val, '1st');
+            basesMappingList[val.steam + 'a'] = {marker: marker, val: val};
+        }
+        if (val.home2X !== '0' || val.home2Z !== '0') {
+            marker = createBaseMarker(val, '2nd');
+            basesMappingList[val.steam + 'b'] = {marker: marker, val: val};
+        }
+    });
+    if (jQuery.isEmptyObject(basesMappingListOld)) { // first run! 
+        $.each(basesMappingList, function (key, val) {
+            active_bases.addLayer(val.marker); // add all available bases
             bases++;
-        }
-        if (val.home2X !== '0' && val.home2Z !== '0') {
-            bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
-            marker = createBaseMarker(bounds, val.protect, val.name);
-            secondBasesMappingList[val.steam] = { marker: marker, val: val};
-            bases++;
-        }
-    });
-    // remove all markers no longer present
-    $.each(basesMappingListOld, function (key, val) {
-        if (!basesMappingList.hasOwnProperty(key)) {
-            active_bases.removeLayer(val.marker);
-        }
-    });
-    // add new markers to the map
-    $.each(basesMappingList, function (key, val) {
-        if (!basesMappingListOld.hasOwnProperty(key)) {
-            active_bases.addLayer(val.marker);
-        } else {
-            active_bases.addLayer(val.marker);
-        }
-    });
-    
-    $.each(secondBasesMappingListOld, function (key, val) {
-        if (!secondBasesMappingList.hasOwnProperty(key)) {
-            active_bases.removeLayer(val.marker);
-        }
-    });
-    // add new markers to the map
-    $.each(secondBasesMappingList, function (key, val) {
-        if (!secondBasesMappingListOld.hasOwnProperty(key)) {
-            active_bases.addLayer(val.marker);            
-        } else {
-            active_bases.addLayer(val.marker);
-        }
-        // need to add a check for changed markers and update them
-    });
-    
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        active_bases.eachLayer(function (marker) {
+            steamid = marker.steamid;
+            if (!basesMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
+                active_bases.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getBounds(), basesMappingList[marker.steamid].marker.getBounds())) {
+                    // moved base
+                }
+                if (marker.protect !== basesMappingList[marker.steamid].marker.protect) {
+                    // changed protection;
+                }
+                bases++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+            if (val.homeX !== '0' || val.homeZ !== '0') {
+                if (!basesMappingListOld.hasOwnProperty(val.steam + 'a')) {
+                    marker = createBaseMarker(val, '1st');
+                    basesMappingList[val.steam + 'a'] = {marker: marker, val: val};
+                    active_bases.addLayer(marker); // add all available bases
+                    bases++;
+                }
+            }
+            if (val.home2X !== '0' || val.home2Z !== '0') {
+                if (!basesMappingListOld.hasOwnProperty(val.steam + 'b')) {
+                    marker = createBaseMarker(val, '2nd');
+                    basesMappingList[val.steam + 'b'] = {marker: marker, val: val};
+                    active_bases.addLayer(marker); // add all available bases
+                    bases++;
+                }
+            }
+        });
+    }
     $("#mapControlBasesCount").text(bases);
     return true;
 };
@@ -329,9 +353,9 @@ var overlayMaps = {
 
 var overlayControl = L.control.layers(null, overlayMaps, {collapsed: false});
 
+locations.addTo(map);
 overlayControl.addTo(map);
 tileLayer.addTo(map);
 onlinePlayers.addTo(map);
-locations.addTo(map);
 gametime.addTo(map);
 mouseposition.addTo(map); // needs Allocs projection code to show sensible data
