@@ -1,4 +1,4 @@
-function deepEqual(x, y) {
+function deepEqual(x, y) { // probably overkill
     const ok = Object.keys, tx = typeof x, ty = typeof y;
     return x && y && tx === 'object' && tx === ty ? (
             ok(x).length === ok(y).length &&
@@ -115,20 +115,59 @@ var pollBases = function () {
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" Player Markers and List ">
 var playersMappingList = {};
-var online_players = L.markerClusterGroup();
+var playersMappingListOld = {};
+var online_players = L.layerGroup();
+
+function createPlayerMarker(val) {
+    var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
+    marker.setOpacity(1.0);
+    marker.on('click', markerOnClick);
+    playersMappingList[val.steamid] = marker;
+    marker.steamid = val.steamid;
+
+    return marker;
+}
 
 var setOnlinePlayerMarkers = function (data) {
-    online_players.clearLayers();
+    playersMappingListOld = jQuery.extend({}, playersMappingList);
     playersMappingList = {};
+    var marker;
     var online = 0;
+
     $.each(data, function (key, val) {
-        var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
-        marker.setOpacity(1.0);
-        marker.on('click', markerOnClick);
-        online_players.addLayer(marker);
-        playersMappingList[val.steamid] = marker;
-        online++;
+        marker = createPlayerMarker(val);
+        playersMappingList[val.steamid] = {marker: marker, val: val};
     });
+    if (jQuery.isEmptyObject(playersMappingListOld)) { // first run! 
+        $.each(playersMappingList, function (key, val) {
+            online_players.addLayer(val.marker); // add all available players
+            online++;
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        online_players.eachLayer(function (marker) {
+            steamid = marker.steamid;
+            if (!playersMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
+                online_players.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getLatLng(), playersMappingList[marker.steamid].marker.getLatLng())) {
+                    // moved player
+                    var pos = L.latLng(playersMappingList[marker.steamid].val.position.x, playersMappingList[marker.steamid].val.position.z);
+                    marker.setLatLng(pos).update(marker);
+                }
+                online++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+            if (!playersMappingListOld.hasOwnProperty(val.steamid)) {
+                marker = createPlayerMarker(val);
+                playersMappingList[val.steamid] = {marker: marker, val: val};
+                online_players.addLayer(marker); // add all available bases
+                online++;
+            }
+        });
+    }
     $("#mapControlOnlineCount").text(online);
     return true;
 };
@@ -150,7 +189,7 @@ var pollOnlinePlayers = function () {
 player_action = function (e) {
     e.preventDefault();
     var player = playersMappingList[e.currentTarget.id];
-    map.setView(player.getLatLng());
+    map.setView(player.marker.getLatLng());
 }
 
 var updateLivestats = function (data) {
