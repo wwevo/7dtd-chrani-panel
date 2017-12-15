@@ -27,9 +27,9 @@ if (!$steam->loggedIn() || has_permission_level(4) === false) { // 4 is a rank f
         <script src="assets/leaflet/leaflet.js"></script>
         <script src="assets/mouseposition/leaflet.mouseposition.js"></script>
         <link rel="stylesheet" href="assets/mouseposition/Mouseposition.css"/>
-        <script src="assets/markercluster/leaflet.markercluster.js"></script>
+<!--        <script src="assets/markercluster/leaflet.markercluster.js"></script>
         <link rel="stylesheet" href="assets/markercluster/MarkerCluster.Default.css"/>
-        <link rel="stylesheet" href="assets/markercluster/MarkerCluster.css"/>
+        <link rel="stylesheet" href="assets/markercluster/MarkerCluster.css"/> //-->
         <script src="assets/gametime/leaflet.gametime.js"></script>
         <link rel="stylesheet" href="assets/gametime/Gametime.css"/>
         <script src="assets/jquery/jquery-3.2.1.min.js"></script>

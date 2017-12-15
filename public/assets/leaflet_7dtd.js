@@ -10,26 +10,31 @@ var basesMappingList = {};
 var basesMappingListOld = {};
 var active_bases = L.layerGroup();
 
+function baseMarkerGetColor(protect) {
+    var color;
+    if (protect === '1') {
+        color = 'green';
+    } else {
+        color = 'red';
+    }
+    return color;
+}
+
 function createBaseMarker(val, order) {
     var marker;
+    var color;
+    var protect;
+
     if (order === '1st') {
         bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
         steamid = val.steam + 'a';
         protect = val.protect;
-        if (val.protect === '1') {
-            var color = 'green';
-        } else {
-            var color = 'red';
-        }
+        color = baseMarkerGetColor(protect);
     } else {
         bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
         steamid = val.steam + 'b';
         protect = val.protect2;
-        if (val.protect2 === '1') {
-            var color = 'green';
-        } else {
-            var color = 'red';
-        }
+        color = baseMarkerGetColor(protect);
     }
     marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
     marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
@@ -47,12 +52,10 @@ var setBaseMarkers = function (data) {
 
     $.each(data, function (key, val) {
         if (val.homeX !== '0' || val.homeZ !== '0') {
-            marker = createBaseMarker(val, '1st');
-            basesMappingList[val.steam + 'a'] = {marker: marker, val: val};
+            basesMappingList[val.steam + 'a'] = {marker: createBaseMarker(val, '1st'), val: val};
         }
         if (val.home2X !== '0' || val.home2Z !== '0') {
-            marker = createBaseMarker(val, '2nd');
-            basesMappingList[val.steam + 'b'] = {marker: marker, val: val};
+            basesMappingList[val.steam + 'b'] = {marker: createBaseMarker(val, '2nd'), val: val};
         }
     });
     if (jQuery.isEmptyObject(basesMappingListOld)) { // first run! 
@@ -71,8 +74,10 @@ var setBaseMarkers = function (data) {
                 if (!deepEqual(marker.getBounds(), basesMappingList[marker.steamid].marker.getBounds())) {
                     // moved base
                 }
-                if (marker.protect !== basesMappingList[marker.steamid].marker.protect) {
+                if (marker.options.color !== basesMappingList[marker.steamid].marker.options.color) {
                     // changed protection;
+                    marker.options.color = baseMarkerGetColor(basesMappingList[marker.steamid].marker.protect);
+                    update(marker);
                 }
                 bases++;
             }
@@ -109,7 +114,7 @@ var pollBases = function () {
                     setBaseMarkers(data); // poll complete, set the markers!!
                 });
     }
-    updateBasesTimeout = window.setTimeout(pollBases, 5000); // if active or not, poll this function periodically
+    updateBasesTimeout = window.setTimeout(pollBases, 7500); // if active or not, poll this function periodically
     return active_bases; // return current layer, this is just for convenience
 };
 // </editor-fold>
@@ -121,7 +126,7 @@ var online_players = L.layerGroup();
 function createPlayerMarker(val) {
     var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
     marker.setOpacity(1.0);
-    marker.on('click', markerOnClick);
+    marker.on('click', playerMarkerOnClick);
     playersMappingList[val.steamid] = marker;
     marker.steamid = val.steamid;
 
@@ -212,7 +217,7 @@ api_action = function (e) {
 }
 
 /* Open modal & center map on marker click  */
-function markerOnClick(e) {
+function playerMarkerOnClick(e) {
     var title = this.options.title;
     var steamid = this.options.steamid;
     $("#playermodal .modal-content").html(
