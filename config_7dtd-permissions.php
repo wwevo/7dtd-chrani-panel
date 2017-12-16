@@ -11,15 +11,19 @@ $config['7dtdPerm']['admins'] = $config['7dtdPerm']['xml']->admins;
 $config['7dtdPerm']['permissions'] = $config['7dtdPerm']['xml']->permissions;
 unset($config['7dtdPerm']['xml']);
 
-foreach ($config['7dtdPerm']['admins']->admin as $admin) {
-    if ($steam->steamid == $admin->attributes()['steamID']) {
-        $config['7dtdPerm']['permission_level'] = (int) $admin->attributes()['permission_level'];
-        break;
-    } else {
-        $config['7dtdPerm']['permission_level'] = 1000;
+function get_permission_level($steamid) {
+    global $config;
+    foreach ($config['7dtdPerm']['admins']->admin as $admin) {
+        if ($steamid == $admin->attributes()['steamID']) {
+            $permission = (int) $admin->attributes()['permission_level'];
+            break;
+        } else {
+            $permission = 1000;
+        }
     }
+    return $permission;
 }
-unset($config['7dtdPerm']['admins']);
+$config['7dtdPerm']['permission_level'] = get_permission_level($steam->steamid);
 
 foreach ($config['7dtdPerm']['permissions']->permission as $permission) {
     if ($config['7dtdPerm']['permission_level'] <= (int) $permission->attributes()['permission_level']) {

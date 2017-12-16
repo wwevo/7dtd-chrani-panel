@@ -34,6 +34,10 @@
 #livestatsmodal ul li {
 }
 
+#livestatsmodal ul li a.admin {
+    color: red;
+}
+
 .modal.left .modal-content {
     height: 100%; padding: 6px;
     overflow-y: visible;

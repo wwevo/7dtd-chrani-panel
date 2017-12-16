@@ -197,11 +197,23 @@ player_action = function (e) {
     map.setView(player.marker.getLatLng());
 }
 
+function sortByKey(array, key) {
+    return array.sort(function(a, b) {
+        var x = a[key]; var y = b[key];
+        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+    });
+}
+
 var updateLivestats = function (data) {
     var player_list;
     player_list = "<ul>";
-    $.each(data, function (key, val) {
-        player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+    playerlist = sortByKey(data, 'permission_level');
+    $.each(playerlist, function (key, val) {
+        if (val.permission_level <= 4) {
+            player_list += '<li><a id="' + val.steamid + '" class="admin" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+        } else {
+            player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+        }
     });
     player_list += "</ul>";
     $("#livestatsmodal .content").html(player_list);
