@@ -24,23 +24,22 @@ function createBaseMarker(val, order) {
     var marker;
     var color;
     var protect;
-    var steamid;
     var bounds;
 
     if (order === '1st') {
         bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
-        steamid = val.steam + 'a';
+        baseid = val.steam + 'a';
         protect = val.protect;
     } else {
         bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
-        steamid = val.steam + 'b';
+        baseid = val.steam + 'b';
         protect = val.protect2;
     }
     color = baseMarkerGetColor(protect);
-    marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
+    marker = L.rectangle(bounds, {owner: val.name, owner_steamid: val.steam, protect: protect, order: order, color: color, weight: 1, fillOpacity: 0.1});
     marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
-    marker.steamid = steamid;
-    marker.protect = protect;
+    marker.on('click', baseMarkerOnClick);
+    marker.baseid = baseid;
     return marker;
 }
 // this shit is more of a mockup and not at all optimized or even thought through :)
@@ -68,18 +67,18 @@ var setBaseMarkers = function (data) {
         // Now we want to remove the old markers...
         // Let's do it one by one. You can come up with a clever way later!
         active_bases.eachLayer(function (marker) {
-            if (!basesMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
+            if (!basesMappingList.hasOwnProperty(marker.baseid)) { // it's not present in the current list!
                 active_bases.removeLayer(marker); // remove
             } else { //  update the existing ones...
-                if (!deepEqual(marker.getBounds(), basesMappingList[marker.steamid].marker.getBounds())) {
+                if (!deepEqual(marker.getBounds(), basesMappingList[marker.baseid].marker.getBounds())) {
                     // moved base
-                    marker.setBounds(basesMappingList[marker.steamid].marker.getBounds());
+                    marker.setBounds(basesMappingList[marker.baseid].marker.getBounds());
                 }
-                if (marker.protect !== basesMappingList[marker.steamid].marker.protect) {
+                if (marker.options.protect !== basesMappingList[marker.baseid].marker.options.protect) {
                     // changed protection;
-                    color = basesMappingList[marker.steamid].marker.options.color;
+                    color = basesMappingList[marker.baseid].marker.options.color;
                     marker.setStyle({color: color});
-                    marker.protect = basesMappingList[marker.steamid].marker.protect;
+                    marker.options.protect = basesMappingList[marker.baseid].marker.options.protect;
                 }
                 bases++;
             }
@@ -119,6 +118,34 @@ var pollBases = function () {
     updateBasesTimeout = window.setTimeout(pollBases, 7500); // if active or not, poll this function periodically
     return active_bases; // return current layer, this is just for convenience
 };
+
+/* Open modal & center map on marker click  */
+function baseMarkerOnClick(e) {
+    var owner = this.options.owner;
+    var order = this.options.order;
+    var protect = this.options.protect;
+    var owner_steamid = this.options.owner_steamid;
+    $("#playermodal .modal-content").html(
+            '<div class="base-info">' +
+            '<span>Actions for</span><br />' +
+            '<strong>' + owner + '&apos;s ' + order + ' base</strong><br />' +
+            '<span>(' + owner_steamid + ')</span><br />' +
+            '<span>protected: ' + ((protect === '0') ? 'no' : 'yes') + '</span><br />' +
+            '</div>' +
+            '<hr />' +
+            '<div class="btn-group">' +
+            '<button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">' +
+            'Base actions <span class="caret"></span>' +
+            '</button>' +
+            '<ul class="dropdown-menu">' +
+            '<li><a href="remove_base.php?order=' + order + '&steamid=' + owner_steamid + '" onclick="api_action(event)">Remove base</a></li>' +
+            '<li><a href="unprotect_base.php?order=' + order + '&steamid=' + owner_steamid + '" onclick="api_action(event)">Remove base-protection</a></li>' +
+            '</ul>' +
+            '</div>'
+            );
+    $('#playermodal').modal('show');
+    map.setView(e.target.getBounds().getCenter());
+}
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" Player Markers and List ">
 var playersMappingList = {};
@@ -226,7 +253,9 @@ api_action = function (e) {
     e.preventDefault();
     $.ajax({
         url: e.currentTarget.href,
-        success: function (data) {}
+        success: function (data) {
+            alert(data);
+        }
     });
 }
 
@@ -257,7 +286,7 @@ function playerMarkerOnClick(e) {
     map.setView(e.target.getLatLng());
 }
 // </editor-fold>
-// <editor-fold defaultstate="collapsed" desc=" Location Markers ">
+// <editor-fold defaultstate="collapsed" desc=" Location Markers and List ">
 var locationsMappingList = {};
 var locationsMappingListOld = {};
 var active_locations = L.layerGroup();
@@ -267,7 +296,7 @@ function locationMarkerGetColor(protect) {
     if (protect === '1') {
         color = 'green';
     } else {
-        color = 'red';
+        color = 'blue';
     }
     return color;
 }
@@ -291,7 +320,6 @@ function createLocationMarker(val) {
     return marker;
 }
 // this shit is more of a mockup and not at all optimized or even thought through :)
-// Let's get it to work first
 var setLocationMarkers = function (data) {
     locationsMappingListOld = jQuery.extend({}, locationsMappingList);
     locationsMappingList = {};

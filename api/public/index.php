@@ -78,25 +78,17 @@ $app->add(function ($request, $response, $next) {
     return $next($request, $response);
 });
 
-$app->get('/bases[/{steam}]', function ($request, $response, $args) {
+$app->get('/bases', function ($request, $response, $args) {
     try {
         if (is_null($args['steam'])) {
-            $where = "WHERE ((homeX != '0' AND homeZ != '0') OR (home2X != '0' AND home2Z != '0')) ORDER BY name DESC";
-        } else {
-            $where = "WHERE steam = :steam LIMIT 1";
+            $where = "WHERE ((homeX != '0' OR homeZ != '0') OR (home2X != '0' OR home2Z != '0')) ORDER BY name DESC";
         }
         $db = getDB();
         $sth = $db->prepare("
-			SELECT steam, name, id, homeX, homeZ, protectSize, protect, home2X, home2Z, protect2Size, protect2
+			SELECT steam, name, id, homeX, homeY, homeZ, exitX, exitY, exitZ, protectSize, protect, home2X, home2Y, home2Z, exit2X, exit2Y, exit2Z, protect2Size, protect2
 			FROM players
 			$where
 		");
-
-        if (is_null($args['steam'])) {
-            
-        } else {
-            $sth->bindParam(':steam', $args['steam'], PDO::PARAM_INT);
-        }
 
         $bases = array();
         if ($sth->execute()) {
@@ -111,6 +103,60 @@ $app->get('/bases[/{steam}]', function ($request, $response, $args) {
             $db = null;
         } else {
             throw new PDOException('No records found.');
+        }
+    } catch (PDOException $e) {
+        echo '{"error":{"text":' . $e->getMessage() . '}}';
+    }
+});
+
+$app->post('/remove_base', function ($request, $response, $args) {
+    try {
+        $request_params = $request->getParams();
+
+        $steamid = $request_params['steamid'];
+        $order = $request_params['order'];
+
+        $db = getDB();
+
+        if ($order === '1st') {
+            $query = "UPDATE players SET homeX = 0, homeY = 0, homeZ = 0, protect = 0, exitX = 0, exitY = 0, exitZ = 0 WHERE steam = $steamid";
+        } else {
+            $query = "UPDATE players SET home2X = 0, home2Y = 0, home2Z = 0, protect2 = 0, exit2X = 0, exit2Y = 0, exit2Z = 0 WHERE steam = $steamid";
+        }
+
+        $sth = $db->prepare($query);
+        if ($sth->execute()) {
+            echo '{"success":{"text": ' . $query . '}}';
+            $db = null;
+        } else {
+            throw new PDOException('No records altered.');
+        }
+    } catch (PDOException $e) {
+        echo '{"error":{"text":' . $e->getMessage() . '}}';
+    }
+});
+
+$app->post('/unprotect_base', function ($request, $response, $args) {
+    try {
+        $request_params = $request->getParams();
+
+        $steamid = $request_params['steamid'];
+        $order = $request_params['order'];
+
+        $db = getDB();
+
+        if ($order === '1st') {
+            $query = "UPDATE players SET protect = 0 WHERE steam = $steamid";
+        } else {
+            $query = "UPDATE players SET protect2 = 0 WHERE steam = $steamid";
+        }
+
+        $sth = $db->prepare($query);
+        if ($sth->execute()) {
+            echo '{"success":{"text": ' . $query . '}}';
+            $db = null;
+        } else {
+            throw new PDOException('No records altered.');
         }
     } catch (PDOException $e) {
         echo '{"error":{"text":' . $e->getMessage() . '}}';

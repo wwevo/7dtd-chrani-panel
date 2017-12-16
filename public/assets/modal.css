@@ -71,6 +71,7 @@
     padding: 15px 15px 80px;
 }
 
+.modal.left .base-info,
 .modal.left .player-info {
     text-align: center;
 }
