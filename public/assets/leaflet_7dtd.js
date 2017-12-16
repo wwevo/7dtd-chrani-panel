@@ -1,41 +1,108 @@
+function deepEqual(x, y) { // probably overkill
+    const ok = Object.keys, tx = typeof x, ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (
+            ok(x).length === ok(y).length &&
+            ok(x).every(key => deepEqual(x[key], y[key]))
+            ) : (x === y);
+}
 // <editor-fold defaultstate="collapsed" desc=" Base Markers ">
 var basesMappingList = {};
+var basesMappingListOld = {};
 var active_bases = L.layerGroup();
 
+function baseMarkerGetColor(protect) {
+    var color;
+    if (protect === '1') {
+        color = 'green';
+    } else {
+        color = 'red';
+    }
+    return color;
+}
+
+function createBaseMarker(val, order) {
+    var marker;
+    var color;
+    var protect;
+    var steamid;
+    var bounds;
+
+    if (order === '1st') {
+        bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
+        steamid = val.steam + 'a';
+        protect = val.protect;
+    } else {
+        bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
+        steamid = val.steam + 'b';
+        protect = val.protect2;
+    }
+    color = baseMarkerGetColor(protect);
+    marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
+    marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
+    marker.steamid = steamid;
+    marker.protect = protect;
+    return marker;
+}
+// this shit is more of a mockup and not at all optimized or even thought through :)
+// Let's get it to work first
 var setBaseMarkers = function (data) {
-    active_bases.clearLayers();
+    basesMappingListOld = jQuery.extend({}, basesMappingList);
     basesMappingList = {};
+    var marker;
     var bases = 0;
+
     $.each(data, function (key, val) {
-        var marker;
-        if (val.homeX !== '0' && val.homeZ !== '0') {
-            if (val.protect === '1') {
-                var color = 'green';
-            } else {
-                var color = 'red';
-            }
-            var bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
-            marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
-            marker.bindTooltip(val.name + " (1st base)", {permanent: false, direction: "center"});
-            active_bases.addLayer(marker);
-            basesMappingList[bases] = marker;
-            bases++;
+        if (val.homeX !== '0' || val.homeZ !== '0') {
+            basesMappingList[val.steam + 'a'] = {marker: createBaseMarker(val, '1st'), val: val};
         }
-        if (val.home2X !== '0' && val.home2Z !== '0') {
-            var color = 'green';
-            if (val.protect2 === '1') {
-                var color = 'green';
-            } else {
-                var color = 'red';
-            }
-            var bounds2 = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
-            marker = L.rectangle(bounds2, {color: color, weight: 1, fillOpacity: 0.1});
-            marker.bindTooltip(val.name + " (2nd base)", {permanent: false, direction: "center"});
-            active_bases.addLayer(marker);
-            basesMappingList[bases] = marker;
-            bases++;
+        if (val.home2X !== '0' || val.home2Z !== '0') {
+            basesMappingList[val.steam + 'b'] = {marker: createBaseMarker(val, '2nd'), val: val};
         }
     });
+    if (jQuery.isEmptyObject(basesMappingListOld)) { // first run! 
+        $.each(basesMappingList, function (key, val) {
+            active_bases.addLayer(val.marker); // add all available bases
+            bases++;
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        active_bases.eachLayer(function (marker) {
+            if (!basesMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
+                active_bases.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getBounds(), basesMappingList[marker.steamid].marker.getBounds())) {
+                    // moved base
+                    marker.setBounds(basesMappingList[marker.steamid].marker.getBounds());
+                }
+                if (marker.protect !== basesMappingList[marker.steamid].marker.protect) {
+                    // changed protection;
+                    color = basesMappingList[marker.steamid].marker.options.color;
+                    marker.setStyle({color: color});
+                    marker.protect = basesMappingList[marker.steamid].marker.protect;
+                }
+                bases++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+            if (val.homeX !== '0' || val.homeZ !== '0') {
+                if (!basesMappingListOld.hasOwnProperty(val.steam + 'a')) {
+                    marker = createBaseMarker(val, '1st');
+                    basesMappingList[val.steam + 'a'] = {marker: marker, val: val};
+                    active_bases.addLayer(marker); // add all available bases
+                    bases++;
+                }
+            }
+            if (val.home2X !== '0' || val.home2Z !== '0') {
+                if (!basesMappingListOld.hasOwnProperty(val.steam + 'b')) {
+                    marker = createBaseMarker(val, '2nd');
+                    basesMappingList[val.steam + 'b'] = {marker: marker, val: val};
+                    active_bases.addLayer(marker); // add all available bases
+                    bases++;
+                }
+            }
+        });
+    }
     $("#mapControlBasesCount").text(bases);
     return true;
 };
@@ -44,31 +111,70 @@ var updateBasesTimeout = false;
 var pollBases = function () {
     if (updateBasesTimeout === false // only false the very first time
             || map.hasLayer(active_bases)) { // only execute the poll if the layer is actually being displayed
-        $.getJSON("https://panel.chrani.net/bases.php")
+        $.getJSON("/bases.php")
                 .done(function (data) {
                     setBaseMarkers(data); // poll complete, set the markers!!
                 });
     }
-    updateBasesTimeout = window.setTimeout(pollBases, 30000); // if active or not, poll this function periodically
+    updateBasesTimeout = window.setTimeout(pollBases, 7500); // if active or not, poll this function periodically
     return active_bases; // return current layer, this is just for convenience
 };
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" Player Markers and List ">
 var playersMappingList = {};
-var online_players = L.markerClusterGroup();
+var playersMappingListOld = {};
+var online_players = L.layerGroup();
+
+function createPlayerMarker(val) {
+    var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
+    marker.setOpacity(1.0);
+    marker.on('click', playerMarkerOnClick);
+    playersMappingList[val.steamid] = marker;
+    marker.steamid = val.steamid;
+
+    return marker;
+}
 
 var setOnlinePlayerMarkers = function (data) {
-    online_players.clearLayers();
+    playersMappingListOld = jQuery.extend({}, playersMappingList);
     playersMappingList = {};
+    var marker;
     var online = 0;
+
     $.each(data, function (key, val) {
-        var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
-        marker.setOpacity(1.0);
-        marker.on('click', markerOnClick);
-        online_players.addLayer(marker);
-        playersMappingList[val.steamid] = marker;
-        online++;
+        marker = createPlayerMarker(val);
+        playersMappingList[val.steamid] = {marker: marker, val: val};
     });
+    if (jQuery.isEmptyObject(playersMappingListOld)) { // first run! 
+        $.each(playersMappingList, function (key, val) {
+            online_players.addLayer(val.marker); // add all available players
+            online++;
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        online_players.eachLayer(function (marker) {
+            steamid = marker.steamid;
+            if (!playersMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
+                online_players.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getLatLng(), playersMappingList[marker.steamid].marker.getLatLng())) {
+                    // moved player
+                    var pos = L.latLng(playersMappingList[marker.steamid].val.position.x, playersMappingList[marker.steamid].val.position.z);
+                    marker.setLatLng(pos).update(marker);
+                }
+                online++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+            if (!playersMappingListOld.hasOwnProperty(val.steamid)) {
+                marker = createPlayerMarker(val);
+                playersMappingList[val.steamid] = {marker: marker, val: val};
+                online_players.addLayer(marker); // add all available bases
+                online++;
+            }
+        });
+    }
     $("#mapControlOnlineCount").text(online);
     return true;
 };
@@ -77,30 +183,42 @@ var updatePlayerTimeout = false;
 var pollOnlinePlayers = function () {
     if (updatePlayerTimeout === false
             || map.hasLayer(online_players)) {
-        $.getJSON("https://panel.chrani.net/online_players.php")
+        $.getJSON("/online_players.php")
                 .done(function (data) {
                     setOnlinePlayerMarkers(data);
-                    updateLivestats(data);
+                    updatePlayersJumplist(data);
                 });
     }
     updatePlayerTimeout = window.setTimeout(pollOnlinePlayers, 2000);
     return online_players;
 };
 
-player_action = function (e) {
+player_jumplist_action = function (e) {
     e.preventDefault();
     var player = playersMappingList[e.currentTarget.id];
-    map.setView(player.getLatLng());
+    map.setView(player.marker.getLatLng());
+};
+
+function sortByKey(array, key) {
+    return array.sort(function(a, b) {
+        var x = a[key]; var y = b[key];
+        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+    });
 }
 
-var updateLivestats = function (data) {
+var updatePlayersJumplist = function (data) {
     var player_list;
     player_list = "<ul>";
-    $.each(data, function (key, val) {
-        player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+    playerlist = sortByKey(data, 'permission_level');
+    $.each(playerlist, function (key, val) {
+        if (val.permission_level <= 4) {
+            player_list += '<li><a id="' + val.steamid + '" class="admin" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
+        } else {
+            player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
+        }
     });
     player_list += "</ul>";
-    $("#livestatsmodal .content").html(player_list);
+    $("#players_jumplist .content").html(player_list);
 
 };
 
@@ -113,7 +231,7 @@ api_action = function (e) {
 }
 
 /* Open modal & center map on marker click  */
-function markerOnClick(e) {
+function playerMarkerOnClick(e) {
     var title = this.options.title;
     var steamid = this.options.steamid;
     $("#playermodal .modal-content").html(
@@ -141,40 +259,115 @@ function markerOnClick(e) {
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" Location Markers ">
 var locationsMappingList = {};
+var locationsMappingListOld = {};
 var active_locations = L.layerGroup();
 
+function locationMarkerGetColor(protect) {
+    var color;
+    if (protect === '1') {
+        color = 'green';
+    } else {
+        color = 'red';
+    }
+    return color;
+}
+
+function createLocationMarker(val) {
+    var marker;
+    var color;
+    var protect;
+    var locationid;
+    var bounds;
+
+    bounds = [[Number(val.x) - Number(val.protectSize), Number(val.z) - Number(val.protectSize)], [Number(val.x) + Number(val.protectSize), Number(val.z) + Number(val.protectSize)]];
+    color = locationMarkerGetColor(protect);
+    marker = L.rectangle(bounds, {color: color, weight: 3, fillOpacity: 0, dashArray: "5 5 1 5"});
+    marker.bindTooltip(val.name, {permanent: true, direction: "center"});
+    locationid = val.name;
+    protect = val.protect;
+
+    marker.locationid = locationid;
+    marker.protect = protect;
+    return marker;
+}
+// this shit is more of a mockup and not at all optimized or even thought through :)
+// Let's get it to work first
 var setLocationMarkers = function (data) {
-    active_locations.clearLayers();
+    locationsMappingListOld = jQuery.extend({}, locationsMappingList);
     locationsMappingList = {};
+    var marker;
+    var locations = 0;
+
     $.each(data, function (key, val) {
-        var marker;
-        if (val.x !== '0' && val.z !== '0') {
-            if (val.protected === '1') {
-                var color = 'blue';
-            } else {
-                var color = 'red';
-            }
-            var bounds = [[Number(val.x) - Number(val.protectSize), Number(val.z) - Number(val.protectSize)], [Number(val.x) + Number(val.protectSize), Number(val.z) + Number(val.protectSize)]];
-            marker = L.rectangle(bounds, {color: color, weight: 3, fillOpacity: 0, dashArray: "5 5 1 5"});
-            marker.bindTooltip(val.name, {permanent: true, direction: "center"});
-            active_locations.addLayer(marker);
-            locationsMappingList[val.name] = marker;
-        }
+        locationsMappingList[val.name] = {marker: createLocationMarker(val), val: val};
     });
+    if (jQuery.isEmptyObject(locationsMappingListOld)) { // first run! 
+        $.each(locationsMappingList, function (key, val) {
+            active_locations.addLayer(val.marker); // add all available bases
+            locations++;
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        active_locations.eachLayer(function (marker) {
+            if (!locationsMappingList.hasOwnProperty(marker.locationid)) { // it's not present in the current list!
+                active_locations.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getBounds(), locationsMappingList[marker.locationid].marker.getBounds())) {
+                    // moved base
+                    marker.setBounds(locationsMappingList[marker.locationid].marker.getBounds());
+                }
+                if (marker.protect !== locationsMappingList[marker.locationid].marker.protect) {
+                    // changed protection;
+                    color = locationsMappingList[marker.locationid].marker.options.color;
+                    marker.setStyle({color: color});
+                    marker.protect = locationsMappingList[marker.locationid].marker.protect;
+                }
+                locations++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+                if (!locationsMappingListOld.hasOwnProperty(val.name)) {
+                    marker = createLocationMarker(val);
+                    locationsMappingList[val.name] = {marker: marker, val: val};
+                    active_locations.addLayer(marker); // add all available bases
+                    locations++;
+                }
+        });
+    }
+    $("#mapControlLocationsCount").text(locations);
     return true;
 };
 
 var updateLocationTimeout = false;
 var pollLocations = function () {
-    if (updateLocationTimeout === false
-            || map.hasLayer(active_locations)) {
-        $.getJSON("https://panel.chrani.net/locations.php")
+    if (updateLocationTimeout === false // only false the very first time
+            || map.hasLayer(active_locations)) { // only execute the poll if the layer is actually being displayed
+        $.getJSON("/locations.php")
                 .done(function (data) {
-                    setLocationMarkers(data);
+                    setLocationMarkers(data); // poll complete, set the markers!!
+                    updateLocationsJumplist(data);
                 });
     }
-    updateLocationTimeout = window.setTimeout(pollLocations, 30000);
-    return active_locations;
+    updateLocationTimeout = window.setTimeout(pollLocations, 7500); // if active or not, poll this function periodically
+    return active_locations; // return current layer, this is just for convenience
+};
+
+location_jumplist_action = function (e) {
+    e.preventDefault();
+    var location = locationsMappingList[e.currentTarget.id];
+    map.setView(location.marker.getBounds().getCenter());
+};
+
+var updateLocationsJumplist = function (data) {
+    var location_list;
+    location_list = "<ul>";
+    $.each(data, function (key, val) {
+        location_list += '<li><a id="' + val.name + '" href="#" onclick="location_jumplist_action(event)">' + val.name + "</a></li>";
+    });
+    location_list += "</ul>";
+    $("#locations_jumplist .content").html(location_list);
+
 };
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" LCB Markers ">
@@ -210,7 +403,7 @@ var updateLcbTimeout = false;
 var pollLcb = function () {
     if (updateLcbTimeout === false
             || map.hasLayer(active_lcb)) {
-        $.getJSON("https://panel.chrani.net/landclaims.php")
+        $.getJSON("/landclaims.php")
                 .done(function (data) {
                     setLcbMarkers(data);
                 });
@@ -252,7 +445,7 @@ function initMap() {
 }
 /*	fetch all map tiles and perform manual offset manipulation */
 function pollTileLayer() {
-    var _tileLayer = L.tileLayer('https://panel.chrani.net/tiles/{z}/{x}/{y}.png', {
+    var _tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
         tileSize: 128,
         minNativeZoom: 0,
         minZoom: -1,
@@ -285,7 +478,7 @@ var baseMaps = {
     "World": tileLayer
 };
 var overlayMaps = {
-    'All locations': locations,
+    'All locations (<span id="mapControlLocationsCount">0</span>)': locations,
     'Online players (<span id="mapControlOnlineCount">0</span>)': onlinePlayers,
     'All bases (<span id="mapControlBasesCount">0</span>)': bases,
     'Landclaims (<span id="mapControlLcbCount">0</span>)': lcb
@@ -293,9 +486,9 @@ var overlayMaps = {
 
 var overlayControl = L.control.layers(null, overlayMaps, {collapsed: false});
 
+locations.addTo(map);
 overlayControl.addTo(map);
 tileLayer.addTo(map);
 onlinePlayers.addTo(map);
-locations.addTo(map);
 gametime.addTo(map);
 mouseposition.addTo(map); // needs Allocs projection code to show sensible data

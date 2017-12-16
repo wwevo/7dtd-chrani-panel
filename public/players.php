@@ -9,6 +9,6 @@ if (!$steam->loggedIn()) {
 	exit;
 }
 
-$context = stream_context_create(constant('CHRANI-APIKEY'));
+$context = stream_context_create(constant('CHRANI-APIKEY-OPTS'));
 $file = file_get_contents('https://api.chrani.net/players', false, $context);
 echo $file;

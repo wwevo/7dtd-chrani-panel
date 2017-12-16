@@ -10,7 +10,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 set_time_limit(5);
 
-if (!$steam->loggedIn()) {
+if (!$steam->loggedIn() || has_permission_level(4) === false) { // 4 is a rank for a few special players like testers
     $header = 'Location: ' . $config['SteamAuth']['domainname'];
     header($header);
     exit;
@@ -27,9 +27,9 @@ if (!$steam->loggedIn()) {
         <script src="assets/leaflet/leaflet.js"></script>
         <script src="assets/mouseposition/leaflet.mouseposition.js"></script>
         <link rel="stylesheet" href="assets/mouseposition/Mouseposition.css"/>
-        <script src="assets/markercluster/leaflet.markercluster.js"></script>
+<!--        <script src="assets/markercluster/leaflet.markercluster.js"></script>
         <link rel="stylesheet" href="assets/markercluster/MarkerCluster.Default.css"/>
-        <link rel="stylesheet" href="assets/markercluster/MarkerCluster.css"/>
+        <link rel="stylesheet" href="assets/markercluster/MarkerCluster.css"/> //-->
         <script src="assets/gametime/leaflet.gametime.js"></script>
         <link rel="stylesheet" href="assets/gametime/Gametime.css"/>
         <script src="assets/jquery/jquery-3.2.1.min.js"></script>
@@ -37,14 +37,19 @@ if (!$steam->loggedIn()) {
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     </head>
     <body>
-        <div id="map">7 Days to Die Map: Chrani-Gameserver</div>
+        <div id="map">7 Days to Die Map: Chrani-Gameserver (c) 2017</div>
         <!-- Modal EMPTY-->
         <div class="modal left fade" id="playermodal" role="dialog" tabindex="-1">
             <div class="modal-dialog" role="document">
                 <div class="modal-content"></div>
             </div>
         </div>
-        <div id="livestatsmodal">
+        <div id="players_jumplist">
+            <div class="box">
+                <div class="content"></div>
+            </div>
+        </div>
+        <div id="locations_jumplist">
             <div class="box">
                 <div class="content"></div>
             </div>
