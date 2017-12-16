@@ -112,7 +112,7 @@ var updateBasesTimeout = false;
 var pollBases = function () {
     if (updateBasesTimeout === false // only false the very first time
             || map.hasLayer(active_bases)) { // only execute the poll if the layer is actually being displayed
-        $.getJSON("https://panel.chrani.net/bases.php")
+        $.getJSON("/bases.php")
                 .done(function (data) {
                     setBaseMarkers(data); // poll complete, set the markers!!
                 });
@@ -184,7 +184,7 @@ var updatePlayerTimeout = false;
 var pollOnlinePlayers = function () {
     if (updatePlayerTimeout === false
             || map.hasLayer(online_players)) {
-        $.getJSON("https://panel.chrani.net/online_players.php")
+        $.getJSON("/online_players.php")
                 .done(function (data) {
                     setOnlinePlayerMarkers(data);
                     updateLivestats(data);
@@ -287,7 +287,7 @@ var updateLocationTimeout = false;
 var pollLocations = function () {
     if (updateLocationTimeout === false
             || map.hasLayer(active_locations)) {
-        $.getJSON("https://panel.chrani.net/locations.php")
+        $.getJSON("/locations.php")
                 .done(function (data) {
                     setLocationMarkers(data);
                 });
@@ -329,7 +329,7 @@ var updateLcbTimeout = false;
 var pollLcb = function () {
     if (updateLcbTimeout === false
             || map.hasLayer(active_lcb)) {
-        $.getJSON("https://panel.chrani.net/landclaims.php")
+        $.getJSON("/landclaims.php")
                 .done(function (data) {
                     setLcbMarkers(data);
                 });
@@ -371,7 +371,7 @@ function initMap() {
 }
 /*	fetch all map tiles and perform manual offset manipulation */
 function pollTileLayer() {
-    var _tileLayer = L.tileLayer('https://panel.chrani.net/tiles/{z}/{x}/{y}.png', {
+    var _tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
         tileSize: 128,
         minNativeZoom: 0,
         minZoom: -1,

@@ -23,7 +23,7 @@ L.Control.GameTime = L.Control.extend({
 
     _updateGameTimeEvent: function () {
         var div = this._div;
-        $.getJSON("https://panel.chrani.net/getstats.php")
+        $.getJSON("/getstats.php")
                 .done(function (data) {
                     var time = "Day " + data.gametime.days + ", ";
                     if (data.gametime.hours < 10)
