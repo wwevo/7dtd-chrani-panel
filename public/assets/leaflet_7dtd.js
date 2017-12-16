@@ -31,13 +31,12 @@ function createBaseMarker(val, order) {
         bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
         steamid = val.steam + 'a';
         protect = val.protect;
-        color = baseMarkerGetColor(protect);
     } else {
         bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
         steamid = val.steam + 'b';
         protect = val.protect2;
-        color = baseMarkerGetColor(protect);
     }
+    color = baseMarkerGetColor(protect);
     marker = L.rectangle(bounds, {color: color, weight: 1, fillOpacity: 0.1});
     marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
     marker.steamid = steamid;
@@ -187,18 +186,18 @@ var pollOnlinePlayers = function () {
         $.getJSON("/online_players.php")
                 .done(function (data) {
                     setOnlinePlayerMarkers(data);
-                    updateLivestats(data);
+                    updatePlayersJumplist(data);
                 });
     }
     updatePlayerTimeout = window.setTimeout(pollOnlinePlayers, 2000);
     return online_players;
 };
 
-player_action = function (e) {
+player_jumplist_action = function (e) {
     e.preventDefault();
     var player = playersMappingList[e.currentTarget.id];
     map.setView(player.marker.getLatLng());
-}
+};
 
 function sortByKey(array, key) {
     return array.sort(function(a, b) {
@@ -207,19 +206,19 @@ function sortByKey(array, key) {
     });
 }
 
-var updateLivestats = function (data) {
+var updatePlayersJumplist = function (data) {
     var player_list;
     player_list = "<ul>";
     playerlist = sortByKey(data, 'permission_level');
     $.each(playerlist, function (key, val) {
         if (val.permission_level <= 4) {
-            player_list += '<li><a id="' + val.steamid + '" class="admin" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+            player_list += '<li><a id="' + val.steamid + '" class="admin" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
         } else {
-            player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_action(event)">' + val.name + "</a></li>";
+            player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
         }
     });
     player_list += "</ul>";
-    $("#livestatsmodal .content").html(player_list);
+    $("#players_jumplist .content").html(player_list);
 
 };
 
@@ -260,40 +259,115 @@ function playerMarkerOnClick(e) {
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" Location Markers ">
 var locationsMappingList = {};
+var locationsMappingListOld = {};
 var active_locations = L.layerGroup();
 
+function locationMarkerGetColor(protect) {
+    var color;
+    if (protect === '1') {
+        color = 'green';
+    } else {
+        color = 'red';
+    }
+    return color;
+}
+
+function createLocationMarker(val) {
+    var marker;
+    var color;
+    var protect;
+    var locationid;
+    var bounds;
+
+    bounds = [[Number(val.x) - Number(val.protectSize), Number(val.z) - Number(val.protectSize)], [Number(val.x) + Number(val.protectSize), Number(val.z) + Number(val.protectSize)]];
+    color = locationMarkerGetColor(protect);
+    marker = L.rectangle(bounds, {color: color, weight: 3, fillOpacity: 0, dashArray: "5 5 1 5"});
+    marker.bindTooltip(val.name, {permanent: true, direction: "center"});
+    locationid = val.name;
+    protect = val.protect;
+
+    marker.locationid = locationid;
+    marker.protect = protect;
+    return marker;
+}
+// this shit is more of a mockup and not at all optimized or even thought through :)
+// Let's get it to work first
 var setLocationMarkers = function (data) {
-    active_locations.clearLayers();
+    locationsMappingListOld = jQuery.extend({}, locationsMappingList);
     locationsMappingList = {};
+    var marker;
+    var locations = 0;
+
     $.each(data, function (key, val) {
-        var marker;
-        if (val.x !== '0' && val.z !== '0') {
-            if (val.protected === '1') {
-                var color = 'blue';
-            } else {
-                var color = 'red';
-            }
-            var bounds = [[Number(val.x) - Number(val.protectSize), Number(val.z) - Number(val.protectSize)], [Number(val.x) + Number(val.protectSize), Number(val.z) + Number(val.protectSize)]];
-            marker = L.rectangle(bounds, {color: color, weight: 3, fillOpacity: 0, dashArray: "5 5 1 5"});
-            marker.bindTooltip(val.name, {permanent: true, direction: "center"});
-            active_locations.addLayer(marker);
-            locationsMappingList[val.name] = marker;
-        }
+        locationsMappingList[val.name] = {marker: createLocationMarker(val), val: val};
     });
+    if (jQuery.isEmptyObject(locationsMappingListOld)) { // first run! 
+        $.each(locationsMappingList, function (key, val) {
+            active_locations.addLayer(val.marker); // add all available bases
+            locations++;
+        });
+    } else { // this only gets executed when the layer is active!
+        // Now we want to remove the old markers...
+        // Let's do it one by one. You can come up with a clever way later!
+        active_locations.eachLayer(function (marker) {
+            if (!locationsMappingList.hasOwnProperty(marker.locationid)) { // it's not present in the current list!
+                active_locations.removeLayer(marker); // remove
+            } else { //  update the existing ones...
+                if (!deepEqual(marker.getBounds(), locationsMappingList[marker.locationid].marker.getBounds())) {
+                    // moved base
+                    marker.setBounds(locationsMappingList[marker.locationid].marker.getBounds());
+                }
+                if (marker.protect !== locationsMappingList[marker.locationid].marker.protect) {
+                    // changed protection;
+                    color = locationsMappingList[marker.locationid].marker.options.color;
+                    marker.setStyle({color: color});
+                    marker.protect = locationsMappingList[marker.locationid].marker.protect;
+                }
+                locations++;
+            }
+        });
+        $.each(data, function (key, val) { // and add new ones!
+                if (!locationsMappingListOld.hasOwnProperty(val.name)) {
+                    marker = createLocationMarker(val);
+                    locationsMappingList[val.name] = {marker: marker, val: val};
+                    active_locations.addLayer(marker); // add all available bases
+                    locations++;
+                }
+        });
+    }
+    $("#mapControlLocationsCount").text(locations);
     return true;
 };
 
 var updateLocationTimeout = false;
 var pollLocations = function () {
-    if (updateLocationTimeout === false
-            || map.hasLayer(active_locations)) {
+    if (updateLocationTimeout === false // only false the very first time
+            || map.hasLayer(active_locations)) { // only execute the poll if the layer is actually being displayed
         $.getJSON("/locations.php")
                 .done(function (data) {
-                    setLocationMarkers(data);
+                    setLocationMarkers(data); // poll complete, set the markers!!
+                    updateLocationsJumplist(data);
                 });
     }
-    updateLocationTimeout = window.setTimeout(pollLocations, 30000);
-    return active_locations;
+    updateLocationTimeout = window.setTimeout(pollLocations, 7500); // if active or not, poll this function periodically
+    return active_locations; // return current layer, this is just for convenience
+};
+
+location_jumplist_action = function (e) {
+    e.preventDefault();
+    var location = locationsMappingList[e.currentTarget.id];
+    map.setView(location.marker.getBounds().getCenter());
+};
+
+var updateLocationsJumplist = function (data) {
+    var location_list;
+    location_list = "<ul>";
+    $.each(data, function (key, val) {
+        location_list += '<li><a id="' + val.name + '" href="#" onclick="location_jumplist_action(event)">' + val.name + "</a></li>";
+    });
+    location_list += "</ul>";
+    $("#locations_jumplist .content").html(location_list);
+
 };
 // </editor-fold>
 // <editor-fold defaultstate="collapsed" desc=" LCB Markers ">
@@ -404,7 +478,7 @@ var baseMaps = {
     "World": tileLayer
 };
 var overlayMaps = {
-    'All locations': locations,
+    'All locations (<span id="mapControlLocationsCount">0</span>)': locations,
     'Online players (<span id="mapControlOnlineCount">0</span>)': onlinePlayers,
     'All bases (<span id="mapControlBasesCount">0</span>)': bases,
     'Landclaims (<span id="mapControlLcbCount">0</span>)': lcb

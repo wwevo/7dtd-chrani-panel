@@ -44,7 +44,12 @@ if (!$steam->loggedIn() || has_permission_level(4) === false) { // 4 is a rank f
                 <div class="modal-content"></div>
             </div>
         </div>
-        <div id="livestatsmodal">
+        <div id="players_jumplist">
+            <div class="box">
+                <div class="content"></div>
+            </div>
+        </div>
+        <div id="locations_jumplist">
             <div class="box">
                 <div class="content"></div>
             </div>
