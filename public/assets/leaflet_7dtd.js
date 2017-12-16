@@ -24,6 +24,8 @@ function createBaseMarker(val, order) {
     var marker;
     var color;
     var protect;
+    var steamid;
+    var bounds;
 
     if (order === '1st') {
         bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
@@ -67,17 +69,18 @@ var setBaseMarkers = function (data) {
         // Now we want to remove the old markers...
         // Let's do it one by one. You can come up with a clever way later!
         active_bases.eachLayer(function (marker) {
-            steamid = marker.steamid;
             if (!basesMappingList.hasOwnProperty(marker.steamid)) { // it's not present in the current list!
                 active_bases.removeLayer(marker); // remove
             } else { //  update the existing ones...
                 if (!deepEqual(marker.getBounds(), basesMappingList[marker.steamid].marker.getBounds())) {
                     // moved base
+                    marker.setBounds(basesMappingList[marker.steamid].marker.getBounds());
                 }
-                if (marker.options.color !== basesMappingList[marker.steamid].marker.options.color) {
+                if (marker.protect !== basesMappingList[marker.steamid].marker.protect) {
                     // changed protection;
-                    marker.options.color = baseMarkerGetColor(basesMappingList[marker.steamid].marker.protect);
-                    update(marker);
+                    color = basesMappingList[marker.steamid].marker.options.color;
+                    marker.setStyle({color: color});
+                    marker.protect = basesMappingList[marker.steamid].marker.protect;
                 }
                 bases++;
             }
