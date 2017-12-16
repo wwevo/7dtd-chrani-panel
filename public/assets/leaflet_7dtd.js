@@ -451,7 +451,7 @@ function pollTileLayer() {
         minZoom: -1,
         maxNativeZoom: 4,
         maxZoom: 7,
-        attribution: 'Tiles Courtesy of <a href="http://sevendaystodie.com/" target="_blank">7dtd</a>'
+        attribution: 'Tiles Courtesy of <a href="http://7daystodie.com/" target="_blank">7DtD</a>'
     });
     /*	Small hack to be able to use the weird tile-layout 7dtd provides
      thanks goes out to IvanSanchez and ghybs from stackexchange.
