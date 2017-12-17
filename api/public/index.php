@@ -20,7 +20,7 @@ function request_headers() {
             $arh[$arh_key] = $val;
         }
     }
-    return( $arh );
+    return $arh;
 }
 
 function getDB() {

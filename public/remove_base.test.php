@@ -18,6 +18,11 @@ $steamid = (isset($_GET['steamid']) && is_numeric($_GET['steamid'])) ? $_GET['st
 if (is_null($steamid)) {
     die('No steamid provided');
 }
+$order = (isset($_GET['order'])) ? $_GET['order'] : null;
+if (is_null($order)) {
+    die('No base selected');
+}
+
 /*
  * crude way to do this- read the output char by char and stop only at
  * predetermined points.
@@ -64,11 +69,16 @@ if (!$telnet_ready) {
 /*
  * we should be able to issue commands now!
  */
-$command = 'ban add ' . $steamid . ' 3 days "Read the rules again. Cool down!"';
+
+if ($order == '1st') {
+    $command = 'say "/delbase ' . $steamid . '"';
+} else {
+    $command = 'say "/delbase2 ' . $steamid . '"';
+}
 $result = fputs($telnet, $command, strlen($command));
 
 if (!$result) {
-    die("Issuing ban-command seems to have failed!");
+    die("Issuing base-removal-command seems to have failed!");
 }
 
 $rows[] = array("result" => "command '$command' should have been issued!");
