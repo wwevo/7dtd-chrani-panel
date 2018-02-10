@@ -10,34 +10,24 @@ var basesMappingList = {};
 var basesMappingListOld = {};
 var active_bases = L.layerGroup();
 
-function baseMarkerGetColor(protect) {
+function baseMarkerGetColor() {
     var color;
-    if (protect === '1') {
-        color = 'green';
-    } else {
-        color = 'red';
-    }
+    color = 'green';
     return color;
 }
 
-function createBaseMarker(val, order) {
+function createBaseMarker(val) {
     var marker;
     var color;
     var protect;
     var bounds;
 
-    if (order === '1st') {
-        bounds = [[Number(val.homeX) - Number(val.protectSize), Number(val.homeZ) - Number(val.protectSize)], [Number(val.homeX) + Number(val.protectSize), Number(val.homeZ) + Number(val.protectSize)]];
-        baseid = val.steam + 'a';
-        protect = val.protect;
-    } else {
-        bounds = [[Number(val.home2X) - Number(val.protect2Size), Number(val.home2Z) - Number(val.protect2Size)], [Number(val.home2X) + Number(val.protect2Size), Number(val.home2Z) + Number(val.protect2Size)]];
-        baseid = val.steam + 'b';
-        protect = val.protect2;
-    }
-    color = baseMarkerGetColor(protect);
-    marker = L.rectangle(bounds, {owner: val.name, owner_steamid: val.steam, protect: protect, order: order, color: color, weight: 1, fillOpacity: 0.1});
-    marker.bindTooltip(val.name + " (" + order + " base)", {permanent: false, direction: "center"});
+	bounds = [[Math.round(Number(val.pos_x)) - Math.round(Number(val.radius)), Math.round(Number(val.pos_z)) - Math.round(Number(val.radius))], [Math.round(Number(val.pos_x)) + Math.round(Number(val.radius)), Math.round(Number(val.pos_z)) + Math.round(Number(val.radius))]];
+	baseid = val.owner;
+
+    color = baseMarkerGetColor();
+    marker = L.rectangle(bounds, {owner: val.owner, owner_steamid: val.owner, color: color, weight: 1, fillOpacity: 0.1});
+    marker.bindTooltip(val.owner, {permanent: false, direction: "center"});
     marker.on('click', baseMarkerOnClick);
     marker.baseid = baseid;
     return marker;
@@ -51,12 +41,8 @@ var setBaseMarkers = function (data) {
     var bases = 0;
 
     $.each(data, function (key, val) {
-        if (val.homeX !== '0' || val.homeZ !== '0') {
-            basesMappingList[val.steam + 'a'] = {marker: createBaseMarker(val, '1st'), val: val};
-        }
-        if (val.home2X !== '0' || val.home2Z !== '0') {
-            basesMappingList[val.steam + 'b'] = {marker: createBaseMarker(val, '2nd'), val: val};
-        }
+		marker = createBaseMarker(val)
+        basesMappingList[val.owner] = {marker: marker, val: val};
     });
     if (jQuery.isEmptyObject(basesMappingListOld)) { // first run! 
         $.each(basesMappingList, function (key, val) {
@@ -74,32 +60,16 @@ var setBaseMarkers = function (data) {
                     // moved base
                     marker.setBounds(basesMappingList[marker.baseid].marker.getBounds());
                 }
-                if (marker.options.protect !== basesMappingList[marker.baseid].marker.options.protect) {
-                    // changed protection;
-                    color = basesMappingList[marker.baseid].marker.options.color;
-                    marker.setStyle({color: color});
-                    marker.options.protect = basesMappingList[marker.baseid].marker.options.protect;
-                }
                 bases++;
             }
         });
         $.each(data, function (key, val) { // and add new ones!
-            if (val.homeX !== '0' || val.homeZ !== '0') {
-                if (!basesMappingListOld.hasOwnProperty(val.steam + 'a')) {
-                    marker = createBaseMarker(val, '1st');
-                    basesMappingList[val.steam + 'a'] = {marker: marker, val: val};
-                    active_bases.addLayer(marker); // add all available bases
-                    bases++;
-                }
-            }
-            if (val.home2X !== '0' || val.home2Z !== '0') {
-                if (!basesMappingListOld.hasOwnProperty(val.steam + 'b')) {
-                    marker = createBaseMarker(val, '2nd');
-                    basesMappingList[val.steam + 'b'] = {marker: marker, val: val};
-                    active_bases.addLayer(marker); // add all available bases
-                    bases++;
-                }
-            }
+			if (!basesMappingListOld.hasOwnProperty(val.owner)) {
+				marker = createBaseMarker(val, '1st');
+				basesMappingList[val.owner] = {marker: marker, val: val};
+				active_bases.addLayer(marker); // add all available bases
+				bases++;
+			}
         });
     }
     $("#mapControlBasesCount").text(bases);
@@ -153,7 +123,7 @@ var playersMappingListOld = {};
 var online_players = L.layerGroup();
 
 function createPlayerMarker(val) {
-    var marker = L.marker([val.position.x, val.position.z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
+    var marker = L.marker([val.pos_x, val.pos_z], {title: val.name, steamid: val.steamid}).bindTooltip(val.name, {permanent: true, direction: "right"});
     marker.setOpacity(1.0);
     marker.on('click', playerMarkerOnClick);
     playersMappingList[val.steamid] = marker;
@@ -187,7 +157,7 @@ var setOnlinePlayerMarkers = function (data) {
             } else { //  update the existing ones...
                 if (!deepEqual(marker.getLatLng(), playersMappingList[marker.steamid].marker.getLatLng())) {
                     // moved player
-                    var pos = L.latLng(playersMappingList[marker.steamid].val.position.x, playersMappingList[marker.steamid].val.position.z);
+                    var pos = L.latLng(playersMappingList[marker.steamid].val.pos_x, playersMappingList[marker.steamid].val.pos_z);
                     marker.setLatLng(pos).update(marker);
                 }
                 online++;
@@ -236,13 +206,8 @@ function sortByKey(array, key) {
 var updatePlayersJumplist = function (data) {
     var player_list;
     player_list = "<ul>";
-    playerlist = sortByKey(data, 'permission_level');
-    $.each(playerlist, function (key, val) {
-        if (val.permission_level <= 4) {
-            player_list += '<li><a id="' + val.steamid + '" class="admin" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
-        } else {
-            player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
-        }
+    $.each(data, function (key, val) {
+        player_list += '<li><a id="' + val.steamid + '" href="#" onclick="player_jumplist_action(event)">' + val.name + "</a></li>";
     });
     player_list += "</ul>";
     $("#players_jumplist .content").html(player_list);

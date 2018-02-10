@@ -10,5 +10,5 @@ if (!$steam->loggedIn()) {
 }
 
 $context = stream_context_create(constant('CHRANI-APIKEY-OPTS'));
-$file = file_get_contents('https://api.chrani.net/locations', false, $context);
+$file = file_get_contents('https://api.chrani-bot.notjustfor.me/locations', false, $context);
 echo $file;

@@ -8,5 +8,5 @@ if (!$steam->loggedIn()) {
 	header($header);
 	exit;
 }
-$file = file_get_contents('http://chrani.net:25004/api/userstatus?adminuser=' . constant("SDTD-ADMINUSER") . '&admintoken=' . constant("SDTD-ADMINTOKEN"), false);
+$file = file_get_contents('http://panel.chrani-bot.notjustfor.me:8082/api/getlandclaims?adminuser=' . constant("SDTD-ADMINUSER") . '&admintoken=' . constant("SDTD-ADMINTOKEN"), false);
 echo $file;
